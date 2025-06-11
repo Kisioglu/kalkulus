@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İnteraktif Kalkülüs Kampı Planlayıcısı</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Academic Neutral Palette -->
+    <!-- Application Structure Plan: Bu SPA, yoğun ve metin tabanlı kamp raporunu, kullanıcı dostu ve etkileşimli bir deneyime dönüştürmek için tasarlandı. Ana yapı, kullanıcının bilgiye aşamalı olarak erişmesini sağlayan sekmeli bir düzene (Haftalık Plan, Genel Bakış, İpuçları & Kaynaklar) dayanmaktadır. Bu yapı, kullanıcının önce genel bir bakış açısı kazanmasına, ardından haftalık ve günlük ayrıntılara odaklanmasına olanak tanır. "Haftalık Plan" sekmesi, haftalık ve günlük kartlarla gezinmeyi kolaylaştırır; bir güne tıklandığında, ilgili plan, dikkati dağıtmadan odaklanmış bir alanda gösterilir. Bu, öğrencinin bunalmasını önler ve günlük hedeflere odaklanmasına yardımcı olur. Bu yapı, raporun doğrusal yapısını, modern bir web uygulamasının görev odaklı ve keşfedilebilir doğasına dönüştürerek kullanılabilirliği en üst düzeye çıkarır. -->
+    <!-- Visualization & Content Choices: 
+        1. Rapor Bilgisi: Kampın genel konu dağılımı (Fonksiyonlar, Limitler, Türevler, vb. için ayrılan süre).
+           - Amaç: Bilgilendirmek, özetlemek.
+           - Sunum Yöntemi: Donut Chart (Pasta Grafiği).
+           - Etkileşim: Fareyle üzerine gelindiğinde konu adını ve toplam çalışma saatini gösteren araç ipuçları.
+           - Gerekçe: Bu görselleştirme, öğrenciye kampın bütünsel yapısını bir bakışta sunar. Hangi konulara ne kadar ağırlık verileceğini göstererek beklentileri yönetir ve zihinsel bir yol haritası oluşturur. Raporun uzun metninden bu bilgiyi çıkarmak yerine, anında anlaşılır bir özet sağlar.
+           - Kütüphane/Yöntem: Chart.js (Canvas).
+        2. Rapor Bilgisi: Haftalık ve günlük çalışma programı.
+           - Amaç: Organize etmek, gezinmek, detaylandırmak.
+           - Sunum Yöntemi: Etkileşimli Kartlar ve İçerik Alanı.
+           - Etkileşim: Hafta sekmelerine ve gün kartlarına tıklayarak ilgili içeriğin dinamik olarak yüklenmesi.
+           - Gerekçe: Raporun en kritik bölümü olan program tablosunu, etkileşimli bir arayüze dönüştürür. Bu, kullanıcının sadece ihtiyaç duyduğu bilgiye odaklanmasını sağlar ve büyük bir tablonun yarattığı karmaşıklığı ortadan kaldırır. Kullanıcı "Bugün ne yapmalıyım?" sorusuna anında yanıt bulur.
+           - Kütüphane/Yöntem: Vanilla JS DOM Manipulation, Tailwind CSS.
+        3. Rapor Bilgisi: Önerilen kaynaklar (PDF'ler, web siteleri).
+           - Amaç: Eyleme geçirmek, erişimi kolaylaştırmak.
+           - Sunum Yöntemi: Tıklanabilir Bağlantı Listeleri.
+           - Etkileşim: Kaynak adına tıklandığında yeni bir sekmede ilgili kaynağın açılması.
+           - Gerekçe: Kullanıcının her kaynak için URL'yi kopyalayıp yapıştırma zahmetini ortadan kaldırır. Çalışma akışını kesintiye uğratmadan materyallere anında erişim sağlayarak verimliliği artırır.
+           - Kütüphane/Yöntem: Standart HTML `<a>` etiketleri.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .nav-btn {
+            transition: all 0.3s ease;
+        }
+        .nav-btn.active {
+            background-color: #4a5568;
+            color: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .content-fade-enter {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .content-fade-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 300ms ease-out, transform 300ms ease-out;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-700">3 Haftalık Yoğun Kalkülüs Kampı</h1>
+            <p class="text-lg text-gray-500 mt-2">Fonksiyonlardan İntegrallere Derinlemesine Bir Yolculuk</p>
+        </header>
+
+        <nav class="flex justify-center mb-8 bg-gray-200 rounded-lg p-1 space-x-1">
+            <button id="nav-plan" class="nav-btn w-full md:w-auto text-gray-600 font-semibold py-2 px-4 rounded-md">Haftalık Plan</button>
+            <button id="nav-overview" class="nav-btn w-full md:w-auto text-gray-600 font-semibold py-2 px-4 rounded-md">Genel Bakış</button>
+            <button id="nav-tips" class="nav-btn w-full md:w-auto text-gray-600 font-semibold py-2 px-4 rounded-md">İpuçları & Kaynaklar</button>
+        </nav>
+
+        <main id="main-content">
+        </main>
+    </div>
+
+    <footer class="text-center p-4 mt-8 text-gray-500 text-sm">
+        <p>Kalkülüs öğrenme yolculuğunuzda başarılar!</p>
+    </footer>
+
+    <script>
+        const campData = {
+            weeks: [
+                {
+                    week: 1,
+                    title: "Hafta 1: Fonksiyonlar ve Limitler",
+                    days: [
+                        { day: 1, title: "Fonksiyonlara Genel Bakış", plan: "<b>1.5 saat:</b> Fonksiyon tanımı, tanım ve değer kümeleri, dikey çizgi testi.<br><b>2 saat:</b> Temel fonksiyon türleri: Doğrusal, Polinom, Rasyonel, Üstel, Logaritmik. Grafik çizimi ve yorumlama.<br><b>1.5 saat:</b> Alıştırma problemleri ve özet.", resources: [{ n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }, { n: "Varsity Tutors", u: "https://www.varsitytutors.com/calculus_1-practice-tests" }] },
+                        { day: 2, title: "Trigonometrik ve Ters Fonksiyonlar", plan: "<b>2 saat:</b> Trigonometrik fonksiyonlar (sin, cos, tan) ve grafikleri. Temel trigonometrik özdeşlikler.<br><b>1.5 saat:</b> Ters fonksiyonlar ve bileşke fonksiyonlar.<br><b>1.5 saat:</b> Alıştırma problemleri ve kavramsal pekiştirme.", resources: [{ n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }] },
+                        { day: 3, title: "Limitlere Giriş", plan: "<b>2 saat:</b> Limit kavramına giriş, grafiklerden limit tahmini.<br><b>1.5 saat:</b> Tek taraflı limitler ve limitin varlığı.<br><b>1.5 saat:</b> Alıştırma problemleri ve özet.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Varsity Tutors", u: "https://www.varsitytutors.com/calculus_1-practice-tests" }] },
+                        { day: 4, title: "Limit Hesaplama Teknikleri", plan: "<b>2 saat:</b> Limit yasaları, doğrudan yerine koyma ile limit hesaplama.<br><b>2 saat:</b> Belirsiz formlar (0/0) ve çarpanlara ayırma, eşlenik ile limit hesaplama.<br><b>1 saat:</b> Alıştırma ve kavramsal derinleşme.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }] },
+                        { day: 5, title: "Sıkıştırma Teoremi ve Süreklilik", plan: "<b>2 saat:</b> Sıkıştırma Teoremi.<br><b>2 saat:</b> Süreklilik tanımı, bir noktada ve bir aralıkta süreklilik. Süreksizlik türleri.<br><b>1 saat:</b> Alıştırma ve kavramsal bağlantılar.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }] },
+                        { day: 6, title: "Sonsuz Limitler ve Limitler Sonsuzda", plan: "<b>2 saat:</b> Sonsuz limitler (dikey asimptotlar).<br><b>2 saat:</b> Limitler sonsuzda (yatay asimptotlar).<br><b>1 saat:</b> Ara Değer Teoremi ve limitlerin kesin tanımı (epsilon-delta).", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }] },
+                        { day: 7, title: "Haftalık Değerlendirme ve Tekrar", plan: "<b>2 saat:</b> Hafta boyunca öğrenilen tüm konuların genel tekrarı. Kavram haritaları oluşturma.<br><b>2 saat:</b> Karışık limit ve süreklilik problemleri çözme.<br><b>1 saat:</b> Zorlanılan konuları belirleme ve ek çalışma planı yapma.", resources: [{ n: "Varsity Tutors", u: "https://www.varsitytutors.com/calculus_1-practice-tests" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/Classes/CalcI/PracticeProblems.aspx" }] },
+                    ]
+                },
+                {
+                    week: 2,
+                    title: "Hafta 2: Türevler ve Temel Uygulamaları",
+                    days: [
+                         { day: 8, title: "Türevin Tanımı ve Yorumu", plan: "<b>2 saat:</b> Türevin tanımı (limit olarak), teğet çizgisi ve anlık değişim oranı.<br><b>2 saat:</b> Türevin notasyonları ve türevlenebilirlik.<br><b>1 saat:</b> Alıştırma problemleri ve kavramsal pekiştirme.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }] },
+                        { day: 9, title: "Temel Türev Kuralları", plan: "<b>2 saat:</b> Kuvvet kuralı, sabit, toplam ve fark kuralları.<br><b>2 saat:</b> Çarpım ve bölüm kuralları.<br><b>1 saat:</b> Alıştırma problemleri.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Varsity Tutors", u: "https://www.varsitytutors.com/calculus_1-practice-tests" }] },
+                        { day: 10, title: "Özel Fonksiyonların Türevleri", plan: "<b>2 saat:</b> Trigonometrik fonksiyonların türevleri.<br><b>2 saat:</b> Üstel ve logaritmik fonksiyonların türevleri.<br><b>1 saat:</b> Alıştırma ve uygulama.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }] },
+                        { day: 11, title: "Zincir Kuralı ve Kapalı Türev Alma", plan: "<b>2 saat:</b> Zincir kuralı: Bileşke fonksiyonların türevi.<br><b>2 saat:</b> Kapalı türev alma.<br><b>1 saat:</b> Ters trigonometrik fonksiyonların türevleri ve yüksek mertebeden türevler.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }] },
+                        { day: 12, title: "Türevlerin Uygulamaları: İlgili Oranlar ve Doğrusallaştırma", plan: "<b>2.5 saat:</b> İlgili oranlar problemleri.<br><b>2.5 saat:</b> Doğrusal yaklaşımlar ve diferansiyeller.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }] },
+                        { day: 13, title: "Türevlerin Uygulamaları: Ekstremumlar ve Grafik Çizimi", plan: "<b>2.5 saat:</b> Mutlak ve yerel ekstremumlar, kritik noktalar, Ortalama Değer Teoremi.<br><b>2.5 saat:</b> Bir fonksiyonun artan/azalan aralıkları, içbükeylik ve büküm noktaları. Birinci ve İkinci Türev Testleri.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }] },
+                        { day: 14, title: "Türev Uygulamaları: Optimizasyon ve L'Hôpital Kuralı", plan: "<b>2.5 saat:</b> Optimizasyon problemleri.<br><b>2.5 saat:</b> L'Hôpital Kuralı.", resources: [{ n: "Khan Academy AP Calculus AB", u: "https://www.khanacademy.org/math/ap-calculus-ab" }, { n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }] },
+                    ]
+                },
+                {
+                    week: 3,
+                    title: "Hafta 3: İntegraller ve İleri Uygulamaları",
+                    days: [
+                         { day: 15, title: "İntegrallere Giriş ve Belirsiz İntegraller", plan: "<b>2 saat:</b> Riemann toplamları ve alanın yaklaşık olarak hesaplanması.<br><b>2 saat:</b> Belirli integralin tanımı ve özellikleri.<br><b>1 saat:</b> Belirsiz integraller ve temel integral alma kuralları.", resources: [{ n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }] },
+                        { day: 16, title: "Kalkülüsün Temel Teoremi ve Yerine Koyma Yöntemi", plan: "<b>2.5 saat:</b> Kalkülüsün Temel Teoremi (KTK) - KTK I ve KTK II.<br><b>2.5 saat:</b> Yerine koyma (u-substitution) yöntemi.", resources: [{ n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }] },
+                        { day: 17, title: "İntegrallerin Uygulamaları: Alan Hesaplamaları", plan: "<b>2.5 saat:</b> Eğri altındaki alan.<br><b>2.5 saat:</b> Eğriler arasındaki alan.", resources: [{ n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }] },
+                        { day: 18, title: "İntegrallerin Uygulamaları: Hacim Hesaplamaları (Disk/Pul Yöntemi)", plan: "<b>2.5 saat:</b> Dönel cisimlerin hacmi: Disk ve pul yöntemleri.<br><b>2.5 saat:</b> Bilinen kesitlerle hacim hesaplama.", resources: [{ n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }] },
+                        { day: 19, title: "İntegrallerin Uygulamaları: Hacim (Silindirik Kabuk Yöntemi)", plan: "<b>2.5 saat:</b> Dönel cisimlerin hacmi: Silindirik kabuk yöntemi.<br><b>2.5 saat:</b> Ortalama fonksiyon değeri ve İş kavramı.", resources: [{ n: "OpenStax Cilt 1", u: "https://openstax.org/books/calculus-volume-1/pages/1-introduction" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/calci/calci.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }] },
+                        { day: 20, title: "Diferansiyel Denklemlere Giriş ve Uygulamaları", plan: "<b>2.5 saat:</b> Diferansiyel denklemlere giriş ve ayrılabilir denklemler.<br><b>2.5 saat:</b> Üstel büyüme ve bozulma modelleri.", resources: [{ n: "OpenStax Cilt 1 & 2", u: "https://openstax.org/subjects/math" }, { n: "Paul's Online Math Notes", u: "https://tutorial.math.lamar.edu/classes/de/de.aspx" }, { n: "Kuta Software", u: "https://www.kutasoftware.com/freeica.html" }] },
+                        { day: 21, title: "Kapsamlı Tekrar ve Değerlendirme", plan: "<b>2 saat:</b> Tüm kamp konularının genel tekrarı.<br><b>2 saat:</b> Karışık problemler çözme ve deneme sınavları.<br><b>1 saat:</b> Öğrenme sürecinin değerlendirilmesi ve ileri konular için planlama.", resources: [{ n: "Varsity Tutors", u: "https://www.varsitytutors.com/calculus_1-practice-tests" }, { n: "3000 Solved Problems in Calculus (PDF)", u: "https://archive.org/details/schaums-3000-solved-problems-in-calculus" }] },
+                    ]
+                }
+            ],
+            overview: `
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-700">Kampa Hoş Geldiniz!</h2>
+                    <p class="text-gray-600 leading-relaxed">Bu yoğun kalkülüs kampı, matematiğin bu temel dalını 3 hafta gibi kısa bir sürede özümsemek isteyenler için özel olarak hazırlanmıştır. Temel amaç, fonksiyonlardan başlayarak limitler, türevler ve integraller gibi ana konuları kapsamlı bir şekilde ele almak ve hem teorik bilgiye hem de pratik problem çözme yeteneğine sahip olmanızı sağlamaktır. Bu kamp, sağlam bir cebir ve trigonometri temeline sahip, günde 5 saat disiplinli çalışmaya istekli herkes için idealdir.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-bold mb-4 text-gray-700">Konu Dağılımı</h3>
+                        <p class="text-gray-600 mb-4">Bu grafik, 3 haftalık kamp boyunca her bir ana konuya ayrılan yaklaşık toplam çalışma saatini göstermektedir. Bu, hangi konuların daha fazla ağırlık taşıdığını anlamanıza yardımcı olacaktır.</p>
+                        <div class="chart-container">
+                           <canvas id="topicsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                         <h3 class="text-xl font-bold mb-4 text-gray-700">Kalkülüsün Temel Taşları</h3>
+                         <ul class="space-y-3 text-gray-600">
+                            <li><b>Fonksiyonlar ve Grafikler:</b> Kalkülüsün dilini ve temelini oluşturan ilişkiler.</li>
+                            <li><b>Limitler ve Süreklilik:</b> Değişimin başlangıcını, bir fonksiyonun bir noktaya "yaklaşırken" nasıl davrandığını anlama sanatı.</li>
+                            <li><b>Türevler ve Uygulamaları:</b> Anlık değişim oranlarını, eğimleri ve optimizasyon problemlerini çözmek için güçlü bir araç.</li>
+                            <li><b>İntegraller ve Uygulamaları:</b> Birikimi, alanı ve hacmi hesaplamanın anahtarı; türevin ters işlemi.</li>
+                         </ul>
+                    </div>
+                </div>`,
+            tips: `
+                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-700">Genel Çalışma İpuçları</h2>
+                    <ul class="list-disc list-inside space-y-3 text-gray-600 leading-relaxed">
+                        <li><b>Tutarlılık ve Disiplin:</b> Günlük 5 saatlik çalışma süresine sadık kalmak, bu yoğun kampın başarısı için hayati öneme sahiptir.</li>
+                        <li><b>Aktif Öğrenme:</b> Sadece okumak veya video izlemek yerine not alın, kavramları kendi kelimelerinizle açıklayın ve bol bol problem çözün.</li>
+                        <li><b>Kavramsal Anlayışa Odaklanma:</b> Formülleri ezberlemek yerine, her bir kavramın arkasındaki "neden" ve "nasıl" sorularına odaklanın.</li>
+                        <li><b>Problem Çözme:</b> Kalkülüs pratikle öğrenilir. Her gün bol miktarda problem çözün. Yanlış çözdüğünüz problemlere geri dönüp hatalarınızı anlamak çok değerlidir.</li>
+                        <li><b>Tekrar ve Değerlendirme:</b> Öğrenilen konuları düzenli olarak tekrar edin. Haftalık değerlendirmelerle ilerlemenizi takip edin.</li>
+                        <li><b>Kaynak Çeşitliliği:</b> Farklı kaynaklardan yararlanmak, kavramları farklı perspektiflerden görmeyi ve daha iyi anlamayı sağlar.</li>
+                        <li><b>Mola ve Dinlenme:</b> Yoğun çalışma temposunda düzenli molalar vermek ve yeterince dinlenmek, zihinsel yorgunluğu önler ve öğrenme verimliliğini artırır.</li>
+                    </ul>
+                </div>
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-700">Önerilen Ek Kaynaklar</h2>
+                    <div class="space-y-4">
+                        <a href="https://archive.org/details/calculusmadeeasy00thom_1/page/n5/mode/2up" target="_blank" class="block p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200 shadow-sm">
+                            <h3 class="font-bold text-indigo-600">"Calculus Made Easy" (PDF)</h3>
+                            <p class="text-gray-600">Kavramları sezgisel ve basit bir dille anlatan klasik bir eser. Kavramsal anlayışı güçlendirmek için harika.</p>
+                        </a>
+                         <a href="https://openstax.org/subjects/math" target="_blank" class="block p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200 shadow-sm">
+                            <h3 class="font-bold text-indigo-600">OpenStax Calculus Cilt 1, 2 & 3</h3>
+                            <p class="text-gray-600">Üniversite düzeyinde, kapsamlı ve bol alıştırmalı ücretsiz ders kitapları.</p>
+                        </a>
+                        <a href="https://tutorial.math.lamar.edu/" target="_blank" class="block p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200 shadow-sm">
+                            <h3 class="font-bold text-indigo-600">Paul's Online Math Notes</h3>
+                            <p class="text-gray-600">Net açıklamaları ve bolca çözümlü örneği ile öğrenciler arasında popüler bir kaynak.</p>
+                        </a>
+                        <a href="https://ocw.mit.edu/courses/18-01sc-single-variable-calculus-fall-2010/" target="_blank" class="block p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all duration-200 shadow-sm">
+                            <h3 class="font-bold text-indigo-600">MIT OpenCourseWare 18.01SC</h3>
+                            <p class="text-gray-600">MIT kalitesinde ders videoları, notlar, alıştırmalar ve sınavlar.</p>
+                        </a>
+                    </div>
+                </div>`
+        };
+
+        const mainContent = document.getElementById('main-content');
+        const navPlan = document.getElementById('nav-plan');
+        const navOverview = document.getElementById('nav-overview');
+        const navTips = document.getElementById('nav-tips');
+
+        let activeDayCard = null;
+
+        function renderPlanView() {
+            const content = `
+                <div id="week-selector" class="flex justify-center flex-wrap gap-2 mb-6">
+                    ${campData.weeks.map(week => `
+                        <button class="week-btn bg-white text-gray-700 font-semibold py-2 px-6 rounded-lg shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200" data-week="${week.week}">Hafta ${week.week}</button>
+                    `).join('')}
+                </div>
+                <div id="daily-plan-container" class="space-y-6"></div>
+            `;
+            setContent(content);
+            document.querySelector('.week-btn').classList.add('bg-gray-700', 'text-white');
+            renderWeek(1);
+
+            document.querySelectorAll('.week-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('bg-gray-700', 'text-white'));
+                    e.target.classList.add('bg-gray-700', 'text-white');
+                    renderWeek(parseInt(e.target.dataset.week));
+                });
+            });
+        }
+        
+        function renderWeek(weekNumber) {
+            const week = campData.weeks.find(w => w.week === weekNumber);
+            const container = document.getElementById('daily-plan-container');
+            const content = `
+                <h2 class="text-2xl font-bold text-center mb-4 text-gray-600">${week.title}</h2>
+                <div id="day-cards" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+                    ${week.days.map(day => `
+                        <div class="day-card cursor-pointer bg-white p-3 rounded-lg shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 text-center" data-day="${day.day}">
+                            <p class="font-bold text-gray-700">Gün ${day.day}</p>
+                            <p class="text-xs text-gray-500">${day.title}</p>
+                        </div>
+                    `).join('')}
+                </div>
+                <div id="day-detail" class="min-h-[200px]"></div>
+            `;
+            container.innerHTML = content;
+            container.classList.add('content-fade-enter');
+            setTimeout(() => container.classList.add('content-fade-enter-active'), 0);
+            
+            document.querySelectorAll('.day-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    if (activeDayCard) {
+                        activeDayCard.classList.remove('ring-2', 'ring-indigo-400', 'shadow-lg');
+                    }
+                    card.classList.add('ring-2', 'ring-indigo-400', 'shadow-lg');
+                    activeDayCard = card;
+                    renderDayDetail(weekNumber, parseInt(card.dataset.day));
+                });
+            });
+            
+            document.querySelector('.day-card').click();
+        }
+
+        function renderDayDetail(weekNumber, dayNumber) {
+            const day = campData.weeks[weekNumber - 1].days.find(d => d.day === dayNumber);
+            const detailContainer = document.getElementById('day-detail');
+            const content = `
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                     <h3 class="text-xl font-bold mb-4 text-indigo-600">Gün ${day.day}: ${day.title}</h3>
+                     <h4 class="font-semibold text-gray-700 mb-2">Bugünkü Plan (5 Saat)</h4>
+                     <p class="text-gray-600 leading-relaxed mb-6">${day.plan}</p>
+                     <h4 class="font-semibold text-gray-700 mb-3">Kaynaklar</h4>
+                     <div class="flex flex-wrap gap-2">
+                        ${day.resources.map(res => `
+                            <a href="${res.u}" target="_blank" class="bg-indigo-100 text-indigo-800 text-sm font-medium px-3 py-1 rounded-full hover:bg-indigo-200 transition-all duration-200">${res.n} ↗</a>
+                        `).join('')}
+                     </div>
+                </div>
+            `;
+            detailContainer.innerHTML = content;
+            detailContainer.classList.add('content-fade-enter');
+            setTimeout(() => detailContainer.classList.add('content-fade-enter-active'), 0);
+        }
+
+        function renderOverview() {
+            setContent(campData.overview);
+            renderChart();
+        }
+
+        function renderTips() {
+            setContent(campData.tips);
+        }
+
+        function setContent(html) {
+            mainContent.innerHTML = html;
+            mainContent.classList.add('content-fade-enter');
+            setTimeout(() => mainContent.classList.add('content-fade-enter-active'), 0);
+        }
+        
+        function renderChart() {
+            const ctx = document.getElementById('topicsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Fonksiyonlar', 'Limitler', 'Türevler', 'İntegraller', 'Diferansiyel Denklemler', 'Tekrar'],
+                    datasets: [{
+                        label: 'Çalışma Saati',
+                        data: [10, 20, 35, 25, 5, 10], // Hours per topic
+                        backgroundColor: [
+                            '#60a5fa', // blue-400
+                            '#34d399', // emerald-400
+                            '#f87171', // red-400
+                            '#fbbf24', // amber-400
+                            '#a78bfa', // violet-400
+                            '#9ca3af'  // gray-400
+                        ],
+                        borderColor: '#f8f9fa',
+                        borderWidth: 4,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + ' saat';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function setActiveNav(button) {
+            [navPlan, navOverview, navTips].forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+        }
+
+        navPlan.addEventListener('click', () => {
+            setActiveNav(navPlan);
+            renderPlanView();
+        });
+        navOverview.addEventListener('click', () => {
+            setActiveNav(navOverview);
+            renderOverview();
+        });
+        navTips.addEventListener('click', () => {
+            setActiveNav(navTips);
+            renderTips();
+        });
+
+        // Initial load
+        navPlan.click();
+
+    </script>
+</body>
+</html>
